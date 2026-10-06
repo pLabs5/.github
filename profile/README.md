@@ -47,7 +47,7 @@ a homebrew video player. it does its own rendering, input, and networking, and
 ships a few small helper payloads alongside the main one for network discovery
 and probing.
 
-still being built. expect things to move around.
+still being developed. expect things to move around.
 
 ## pYTM5
 
@@ -56,14 +56,10 @@ other streaming sources that registers with the console's system music playback
 widget, so it shows up in the music card and the control center next to spotify
 and apple music.
 
-most of the audio side is already public. the README keeps what has been worked
-out so it does not have to be worked out again.
-
-
 ## Legal
 
 I, foxinwinter/pLabs5, as well as its contributers, are not affiliated with, associated with, sponsored by,
-endorsed by, otherwise established with Sony Interactive Entertainment, Playstation, Discord, or any of their
+endorsed by, or otherwise established with Sony Interactive Entertainment, Playstation, Discord, or any of their
 other companies or works unless explictly stated otherwise.
 Just because a explict mention above isn't present does **NOT** mean otherwise.
 
