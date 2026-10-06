@@ -14,7 +14,7 @@ homebrew and research for the playstation 5.
 |---|---|---|
 | [pWeb5](https://github.com/pLabs5/pWeb5) | jailbreak autoloader that runs in the console's own browser | live |
 | [dRPC5](https://github.com/pLabs5/dRPC5) | discord rich presence, straight from the console | usable |
-| [yFree5](https://github.com/pLabs5/yFree5) | homebrew Youtube Client for the PS5 with no Ads | in progress, not public yet |
+| [yFree5](https://github.com/pLabs5/yFree5) | homebrew Youtube Client for the PS5 with no Ads | in progress, early developement |
 | [pYTM5](https://github.com/pLabs5/pYTM5) | future planned Youtube Music client for the PS5  | not started/ planned|
 
 ## pWeb5
