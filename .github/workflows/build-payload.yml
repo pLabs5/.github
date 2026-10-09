@@ -1,0 +1,168 @@
+# Reusable build workflow for pLabs5 PS5 payloads.
+#
+# Called by a project's own .github/workflows/build.yml with:
+#
+#   jobs:
+#     build:
+#       uses: pLabs5/.github/.github/workflows/build-payload.yml@main
+#       permissions:
+#         contents: write      # only needed so the release job can publish
+#       with:
+#         artifact-name: drpc5
+#         elf-path: dRPC5.elf
+#         artifact-paths: |
+#           dRPC5.elf
+#           dRPC5.elf.sha256
+#           dist/drpc5-tile.pkg
+#
+# The build job checks out the caller's repo, builds the upstream
+# ps5-payload-sdk (pacbrew), checks out pLabs5-SDK, and runs `make` with
+# PLABS5_SDK/PS5_PAYLOAD_SDK exported. On a tag push it also publishes a
+# Release with the same files.
+name: build-payload
+
+on:
+  workflow_call:
+    inputs:
+      make-target:
+        description: make goal(s) to run
+        type: string
+        default: all
+      artifact-name:
+        description: upload-artifact / release artifact name
+        type: string
+        required: true
+      artifact-paths:
+        description: newline-separated paths to upload and release
+        type: string
+        required: true
+      elf-path:
+        description: path of the produced ELF, for the sha256 step (blank to skip)
+        type: string
+        default: ""
+      sdk-ref:
+        description: pLabs5-SDK git ref to build against
+        type: string
+        default: main
+      release:
+        description: publish a Release when a tag is pushed
+        type: boolean
+        default: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # In a reusable workflow the default checkout can fall back to the
+      # callee's branch, so pin the caller repo explicitly.
+      - name: Checkout caller
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+
+      - name: Checkout pacbrew-repo
+        uses: actions/checkout@v4
+        with:
+          repository: ps5-payload-dev/pacbrew-repo
+          path: pacbrew-repo
+
+      - name: Setup build environment
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            autoconf \
+            automake \
+            build-essential \
+            clang-18 \
+            curl \
+            git \
+            libarchive-tools \
+            libtool \
+            lld-18 \
+            makepkg \
+            meson \
+            pacman-package-manager \
+            pkg-config \
+            unzip \
+            xxd \
+            zip
+
+      - name: Build PS5 payload SDK
+        working-directory: pacbrew-repo/sdk
+        run: |
+          makepkg -c -f
+          sudo pacman --noconfirm -U ./ps5-payload-*.pkg.tar.gz
+
+      # Third-party archives are built with LLVM 21; lld 18 cannot read their
+      # objects ("Unknown attribute kind 102"). Repoint the SDK linker/compiler.
+      - name: Use LLVM 21 for the SDK toolchain
+        run: |
+          set -euo pipefail
+          wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
+          chmod +x /tmp/llvm.sh
+          sudo /tmp/llvm.sh 21
+          sudo apt-get install -y clang-21 lld-21
+          clang-21 --version | head -1
+          SDK=/opt/ps5-payload-sdk
+          for t in clang ld.lld lld; do
+            if [ -e "$SDK/bin/$t" ]; then
+              echo "repointing $SDK/bin/$t -> $(command -v ${t}-21)"
+              sudo ln -sf "$(command -v ${t}-21)" "$SDK/bin/$t"
+            fi
+          done
+
+      - name: Checkout pLabs5 SDK
+        uses: actions/checkout@v4
+        with:
+          repository: pLabs5/pLabs5-SDK
+          ref: ${{ inputs.sdk-ref }}
+          path: pLabs5-sdk
+
+      - name: Build payload and tile PKG
+        env:
+          PLABS5_SDK: ${{ github.workspace }}/pLabs5-sdk
+          PS5_PAYLOAD_SDK: /opt/ps5-payload-sdk
+        run: make ${{ inputs.make-target }}
+
+      - name: Build summary
+        run: |
+          ls -la
+          file ${{ inputs.elf-path }} dist/*.pkg || true
+
+      - name: Generate checksum
+        if: inputs.elf-path != ''
+        run: sha256sum ${{ inputs.elf-path }} > ${{ inputs.elf-path }}.sha256
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.artifact-paths }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: ${{ inputs.release && startsWith(github.ref, 'refs/tags/') }}
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: .
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: ${{ inputs.artifact-paths }}
