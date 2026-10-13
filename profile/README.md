@@ -16,6 +16,9 @@ homebrew and research for the playstation 5.
 | [wView5](https://github.com/pLabs5/wView5) | webview like library for native PS5 apps | mostly incomplete/draft | 
 | [pYTM5](https://github.com/pLabs5/pYTM5) | future planned Youtube Music client for the PS5  | not started. future |
 
+## pLinux5-NG
+a new linux loader using the new Bypervisor-reborn HV bug/exploit in order to boot/run linux for higher FW's, 8.xx through 13.xx
+
 ## pWeb5
 
 a jailbreak autoloader that runs inside the console's browser. it executes the exploit chain in the page, shows you what it is doing while it does it, then pushes homebrew payloads once the chain is up.
